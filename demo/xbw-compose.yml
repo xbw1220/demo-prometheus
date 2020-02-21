@@ -1,0 +1,80 @@
+version: "3.7"
+services:
+
+  nginx:
+    image: 192.168.173.7/nginx:latest
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/logs:/var/log/nginx
+      - ./nginx/conf/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/conf.d/:/etc/nginx/conf.d/
+    deploy:
+      placement:
+        constraints: [node.role == manager]
+    networks:
+      - net
+
+  sentinel:
+    hostname: sentinel
+    image: 192.168.173.91:8082/repository/container/sentinel_dashboard:1.3.0
+    deploy:
+      update_config:
+        order: start-first
+      placement:
+        constraints: [node.hostname == manager]
+    ports:
+      - "8858:8858"
+    networks:
+      - net
+
+  nacos:
+    hostname: nacos
+    image: 192.168.173.91:8082/repository/container/nacos-server
+    deploy:
+      update_config:
+        order: start-first
+      placement:
+        constraints: [node.role == manager]
+    volumes:
+      - ./nacos/conf:/home/nacos/conf
+    environment:
+      - PREFER_HOST_MODE=hostname
+      - MODE=standalone
+    ports:
+      - "8848:8848"
+    networks:
+      - net
+
+  server:
+    image: 192.168.173.91:8082/repository/container/server
+    deploy:
+      endpoint_mode: dnsrr
+      mode: global
+      update_config:
+        order: start-first
+      placement:
+        constraints: [node.role == worker]
+    networks:
+      - net
+
+  client:
+    hostname: client
+    image: 192.168.173.91:8082/repository/container/client
+    deploy:
+      endpoint_mode: dnsrr
+      mode: global
+      update_config:
+        order: start-first
+      placement:
+        constraints: [node.role == worker]
+    networks:
+      - net
+
+networks:
+  net:
+    driver: overlay
+    attachable: true
+    ipam:
+      config:
+        - subnet: 10.0.9.0/24

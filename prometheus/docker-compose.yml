@@ -1,0 +1,56 @@
+version: "3.7"
+services:
+
+  prometheus:
+    image: 192.168.173.7/prom/prometheus
+    hostname: prometheus
+    deploy:
+      update_config:
+        order: start-first
+      placement:
+        constraints: [node.role == manager]
+    ports:
+      - "9000:9090"
+    volumes:
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./config/rules:/etc/prometheus/rules
+    networks:
+      - devops_net
+
+  alertmanager:
+    image: 192.168.173.7/prom/alertmanager
+    hostname: alertmanager
+    deploy:
+      endpoint_mode: dnsrr
+      placement:
+        constraints: [node.hostname == work2]
+    volumes:
+      - ./config/alertmanager.yml:/etc/alertmanager/alertmanager.yml
+    networks:
+      - devops_net
+
+  grafana:
+    image: 192.168.173.7/grafana/grafana
+    hostname: grafana
+    ports:
+      - "3000:3000"
+    deploy:
+      placement:
+        constraints: [node.hostname == work1]
+    networks:
+      - devops_net    
+
+  dingtalk:
+    image: timonwong/prometheus-webhook-dingtalk
+    hostname: dingtalk
+    deploy:
+      endpoint_mode: dnsrr
+      placement:
+        constraints: [node.hostname == work2]
+    entrypoint: /bin/prometheus-webhook-dingtalk --ding.profile="webhook1=https://oapi.dingtalk.com/robot/send?access_token=0819c22f2a1ea46d282b940b21f5a19228069defb8309ac4c578f766efe4e08b"
+    networks:
+      - devops_net
+
+networks:
+  devops_net:
+    external: true
